@@ -1,0 +1,4 @@
+*.DS_Store
+output/
+resources/
+__pycache__
