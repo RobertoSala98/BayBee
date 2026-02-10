@@ -800,9 +800,9 @@ class Beehive(object):
             # probability of using a Lévy flight for mutation
             if not self.std_ABC:
                 if self.max_trials > 1:
-                    p_levy = self.levy_step_size + 0.4 * (self.population[index].counter / (self.max_trials - 1))
+                    p_levy = 0.1 + 0.4 * (self.population[index].counter / (self.max_trials - 1))
                 else:
-                    p_levy = self.levy_step_size
+                    p_levy = 0.1
             else:
                 p_levy = 0.0
 

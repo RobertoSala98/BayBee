@@ -3,45 +3,49 @@ import math
 
 from src.strategy import memory
 
-def levy_flight(beehive, vector, index, lambda_=1.5):
+def levy_flight(beehive, vector, index, beta=1.5, eps=1e-12):
     """
-    Performs a Lévy flight mutation on a single dimension of the vector (Mantegna's algorithm).
+    Lévy flight mutation on a single randomly chosen dimension (Mantegna's algorithm).
 
     Parameters:
-        :param Beehive beehive : beehive object
-        :param np.array vector : candidate solution vector
-        :param int index       : index of the bee in the population
-        :param float lambda_   : Lévy distribution parameter (defaults to 1.5)
+        beehive: beehive object
+        vector (np.ndarray): candidate solution vector (mutated in place)
+        index (int): index of the bee in the population
+        beta (float): Lévy stability parameter (a.k.a. exponent), typically in (1, 2]
+        eps (float): guard for division by ~0 in v
+        atol_nochange (float): tolerance used to decide if mutation had no effect
     """
     current_bee = beehive.population[index]
-    
-    # compute standard deviation of the step distribution
-    x = math.gamma(1 + lambda_)
-    y = np.sin(np.pi * lambda_ / 2)
-    z = math.gamma((1 + lambda_) / 2)
-    w = 2 ** ((lambda_ - 1) / 2)
-    
-    sigma = (x * y / (z * w)) ** (1 / lambda_)
+
+    # --- Mantegna sigma_u for symmetric alpha-stable (beta) ---
+    # sigma_u = [ Γ(1+beta) sin(pi*beta/2) / ( Γ((1+beta)/2) * beta * 2^((beta-1)/2) ) ]^(1/beta)
+    x = math.gamma(1.0 + beta)
+    y = math.sin(math.pi * beta / 2.0)
+    z = math.gamma((1.0 + beta) / 2.0)
+    w = 2.0 ** ((beta - 1.0) / 2.0)
+    sigma_u = (x * y / (z * beta * w)) ** (1.0 / beta)
 
     recent_memory = memory.retrieve_recent_memory(beehive, index)
 
+    # Try until a dimension actually changes, or until all dims are excluded
     while True:
-        # generate random step using normal distribution
-        # (alpha, beta) = (skewness, characteristic exponent)
-        u = np.random.normal(0, sigma)
-        v = np.random.normal(0, 1)
-        
-        step = u / abs(v) ** (1 / lambda_)
-
-        # choose a random not excluded dimension
-        available_dim = [_ for _ in range(beehive.dim) if _ not in current_bee.exclude_exploration_dim]
+        available_dim = [d for d in range(beehive.dim)
+                         if d not in current_bee.exclude_exploration_dim]
         if not available_dim:
             current_bee.skip_exploration = True
-            break
+            return vector
 
-        d = np.random.choice(available_dim)
-        
-        vector[d] = beehive.solution[d] + step * beehive.levy_step_size * (vector[d] - beehive.solution[d])
+        d = int(np.random.choice(available_dim))
+
+        # Sample Lévy step s = u / |v|^(1/beta)
+        u = np.random.normal(0.0, sigma_u)
+        v = np.random.normal(0.0, 1.0)
+        while abs(v) < eps:
+            v = np.random.normal(0.0, 1.0)
+        step = u / (abs(v) ** (1.0 / beta))
+
+        best = beehive.solution
+        vector[d] = best[d] + step * beehive.levy_step_size * (vector[d] - best[d])
 
         # snap vector based on recent memory
         if beehive.snap_function:

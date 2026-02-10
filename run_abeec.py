@@ -137,7 +137,7 @@ def parse_args():
                         help='With how many iterations do you want to run the algorithm')
     parser.add_argument('-mt', '--max_trials', type=int, metavar='', default=3,
                         help='How many times do you want to try to improve the solution before abandoning it')
-    parser.add_argument('-levy', '--levy_step_size', type=int, metavar='', default=0.1,
+    parser.add_argument('-levy', '--levy_step_size', type=float, metavar='', default=0.1,
                         help='What should be the Levy step size you want to consider')
     parser.add_argument('-c', '--constraint', action="store_true",
                         help='Do you want to add and consider any constraints?')
