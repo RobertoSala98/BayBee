@@ -1,6 +1,7 @@
 from time import time
 import numpy as np
 import os
+import json
 
 import matplotlib.pyplot as plt
 
@@ -126,20 +127,22 @@ def bee_algorithm(title, num_runs, num_bees, max_itrs, max_trials, global_optima
         start_time = time()
         try:
             if async_op:
-                cost = model.run_async(run_dir)
+                cost, non_repeated_points, all_points_, global_time = model.run_async(run_dir)
             else:
-                cost = model.run(start_itr, run_dir)
+                cost, non_repeated_points, all_points_, global_time = model.run(start_itr, run_dir)
             plot.plot_utilization(run_dir, log_filename)
+
+            print(f"Run: {run_id + 1}, Execution time: {round(time() - start_time, 2)} seconds, Seed: {seeds[run_id]}")
+
         except Exception as e:
             print(f"Exception: Error occurred during model execution for run {run_id + 1}: {e}")
             continue
-
-        print(f"Run: {run_id + 1}, Execution time: {round(time() - start_time, 2)} seconds, Seed: {seeds[run_id]}")
 
         try:
             best_costs[run_id, :] = cost["best"]
             mean_costs[run_id, :] = cost["mean"]
             abs_regrets[run_id, :] = cost["abs_regret"]
+        
         except ValueError as e:
             print(f"Error: Shape mismatch for cost data in run {run_id + 1}: {e}. Skipping result storage.")
             continue
@@ -149,6 +152,16 @@ def bee_algorithm(title, num_runs, num_bees, max_itrs, max_trials, global_optima
         print(f"Run {run_id + 1}/{num_runs}, Best Fitness Value ABC: {model.best}, MAPR: {cur_mapr}%")
 
         best.append(model.best)
+
+        data_to_store = {
+            "MAPR": (model.best - global_optima) / abs(global_optima),
+            "Evaluated points": all_points_,
+            "Non-repeated points": non_repeated_points,
+            "Global time": global_time
+        }
+
+        with open(f"output/{run_dir}/summary.json", "w", encoding="utf-8") as f:
+            json.dump(data_to_store, f, indent=4)
 
     # after completing all runs, produce plots and statistics for each run
     avg_best_fitness = np.mean(best)

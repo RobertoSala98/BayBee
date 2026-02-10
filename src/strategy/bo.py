@@ -13,50 +13,37 @@ def apply_BO(beehive, index, role):
         :param int index       : index of the bee in the population
         :param str role        : the current role of the bee
     """
-    dim_num = len(beehive.dataset_obj.columns)
-    population_size = len(beehive.population)
-
-    _pbounds = {}
-    _decay_bounds = {}
-
-    explore_decay = 1.0
-    if dim_num > 0 and population_size > 0 :
-        try: 
-            explore_decay = pow(population_size, (1 / dim_num))
-        except ValueError:
-            pass
-    
-    for idx_col in range(dim_num):
-        col_name = beehive.dataset_obj.columns[idx_col]
-        current_val = beehive.population[index].vector[idx_col]
-        lower_bound = beehive.lower[idx_col]
-        upper_bound = beehive.upper[idx_col]
-        
-        _interval = upper_bound - lower_bound
-
-        _decay_bounds[col_name] = (max(current_val - _interval / (2 * explore_decay), lower_bound),
-                                   min(current_val + _interval / (2 * explore_decay), upper_bound))
-
-        _pbounds[col_name] = (float(lower_bound),
-                              float(upper_bound) * 1.0000000001)
 
     _init_points = np.asarray(beehive.population[index].memory['x'])
-
     log_dir = os.path.dirname(beehive.path_to_log) if beehive.path_to_log else "."
 
-    BO_model = BO(f=None,
-                  dataset=beehive.dataset_obj.filename,
-                  x_columns=beehive.dataset_obj.columns,
-                  target_column=beehive.dataset_obj.target_column,
-                  constraint_column=beehive.dataset_obj.constraint_column,
-                  constraints_bounds=[(0, beehive.dataset_obj.constraint_value)],
-                  seed=beehive.seed,
-                  output_path=log_dir,
-                  init_points=_init_points,
-                  #n_iter=min(beehive.BO_steps, beehive.max_itrs - beehive.iter),
-                  n_iter=1,
-                  log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}',
-                  decay_bounds=_decay_bounds)
+    if beehive.dataset_obj is None:
+        BO_model = BO(  f=beehive.evaluate,
+                        g=beehive.constraints,
+                        bounds=np.column_stack([beehive.lower, beehive.upper]),
+                        dataset=None,
+                        constraints_bounds=[(0, np.inf)],
+                        seed=beehive.seed,
+                        output_path=log_dir,
+                        init_points=_init_points,
+                        n_iter=beehive.BO_steps,
+                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}')
+
+    else:
+        def dummy_function(_X):
+            raise RuntimeError("Objective should not be called in dataset mode.")
+
+        BO_model = BO(  f=dummy_function,
+                        dataset=beehive.dataset_obj.filename,
+                        x_columns=beehive.dataset_obj.columns,
+                        target_column=beehive.dataset_obj.target_column,
+                        constraint_column=beehive.dataset_obj.constraint_column,
+                        constraints_bounds=[(0, beehive.dataset_obj.constraint_value)],
+                        seed=beehive.seed,
+                        output_path=log_dir,
+                        init_points=_init_points,
+                        n_iter=beehive.BO_steps,
+                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}')
 
     for idx_pt in range(len(BO_model.points)):
 
@@ -101,4 +88,7 @@ def store_BO_data(beehive, index):
     if beehive.use_cache and (beehive.mutated_population[index].vector.tobytes() in beehive.cache):
         return 0.0
 
-    return beehive.dataset_obj.get_execution_time(beehive.mutated_population[index].vector)
+    if beehive.dataset_obj is not None:
+        return beehive.dataset_obj.get_execution_time(beehive.mutated_population[index].vector)
+    else:
+        return 0.0

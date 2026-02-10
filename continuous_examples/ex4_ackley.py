@@ -18,9 +18,8 @@ values = [[-30.749339264117793, -29.977398022268275, -22.223361791071024, -19.47
 ndim = 8
 global_optima = 13.867005853882118
 
-BO_steps = 1
 
-def _evaluator(vector):
+def _evaluator(vectors):
     """
     An n-dimensional Ackley function is defined as:
     f(x) = -a * exp(-b * sqrt{(1/n) * sum_{i=1}^n {x_i^2} }) - exp((1/n) * sum_{i=1}^n {cos(c * x_i)}) + a + exp(1)
@@ -29,17 +28,40 @@ def _evaluator(vector):
 
     The global minima of the function being f(x) = 0 at all x_i = 0
     """
-    vector = np.array(vector)
-    a = 20
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    a = 20.0
     b = 0.2
     c = 2 * np.pi
-    part1 = -a * np.exp(-b * np.sqrt(np.sum(vector ** 2) / vector.size))
-    part2 = -np.exp(np.sum(np.cos(c * vector)) / vector.size)
-    return part1 + part2 + a + np.exp(1)
+    n = X.shape[1]
+
+    sum_sq = np.sum(X**2, axis=1)
+    sum_cos = np.sum(np.cos(c * X), axis=1)
+
+    part1 = -a * np.exp(-b * np.sqrt(sum_sq / n))
+    part2 = -np.exp(sum_cos / n)
+    vals = part1 + part2 + a + np.exp(1.0)
+
+    return vals[0] if single else vals
 
 
-def _constraints(vector):
-    return (vector[0] - 3*vector[3])**3 - 2*math.sqrt(vector[7]**2 + math.exp(vector[6])) + 5*vector[4]*vector[5] + math.sin(vector[1]**2 + math.cos(vector[2])) - 2
+def _constraints(vectors):
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] < 8:
+        raise ValueError(f"Constraint expects at least 8 dims, got {X.shape[1]}")
+
+    vals = ((X[:, 0] - 3*X[:, 3])**3
+            - 2*np.sqrt(X[:, 7]**2 + np.exp(X[:, 6]))
+            + 5*X[:, 4]*X[:, 5]
+            + np.sin(X[:, 1]**2 + np.cos(X[:, 2]))
+            - 2)
+
+    return vals[0] if single else vals
 
 
 def _snap_function(vector, exclude_vectors=None, dimension=None):
@@ -80,12 +102,13 @@ def run():
     lower_bound = np.array([-32.768] * ndim)
     upper_bound = np.array([32.768] * ndim)
 
-    seeds = [78088804, 201329629, 309494186, 454989711, 562641258, 570667873, 665370094, 795875253, 835359240, 980151417]
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     # Machine Learning treatment
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -149,6 +172,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

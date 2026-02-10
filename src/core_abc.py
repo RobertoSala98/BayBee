@@ -526,7 +526,7 @@ class Beehive(object):
             self.log_file.close()
             print(f"Final global time: {round(self.global_simulation_time, 2)} s")
 
-        return cost
+        return cost, non_repeated_points, all_points_, self.global_simulation_time
 
     def run_async(self, checkpoint_dir=None):
         """
@@ -650,7 +650,7 @@ class Beehive(object):
             self.log_file.close()
             print(f"Final global time: {round(self.global_time, 2)} s")
 
-        return cost
+        return cost, non_repeated_points, all_points_, self.global_time
 
     def compute_probability(self):
         """

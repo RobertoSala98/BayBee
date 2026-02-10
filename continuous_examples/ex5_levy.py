@@ -14,9 +14,8 @@ values = [[-9.816108766090439, -9.574372495194348, -9.212141951433692, -9.121942
 ndim = 4
 global_optima = 0.46560597365889334
 
-BO_steps = 1
 
-def _evaluator(vector):
+def _evaluator(vectors):
     """
     An n-dimensional Levy function is defined as:
     f(x) = sin^2(PI * w_1) + sum_{i=1}^{n-1} {(w_i - 1)^2 * [1 + 10 * sin^2(PI * w_i + 1)]} + (w_n - 1)^2 * [1 + sin^2(2*PI * w_n)]
@@ -24,15 +23,37 @@ def _evaluator(vector):
 
     The global minima of the function being f(x) = 0 at all x_i = 1
     """
-    vector = np.array(vector)
-    w = 1 + (vector - 1) / 4
-    part1 = np.sin(np.pi * w[0]) ** 2 + (w[-1] - 1) ** 2 * (1 + np.sin(2 * np.pi * w[-1]) ** 2)
-    part2 = np.sum((w[:-1] - 1) ** 2 * (1 + 10 * np.sin(np.pi * w[:-1] + 1) ** 2))
-    return part1 + part2
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    w = 1 + (X - 1) / 4
+
+    part1 = (np.sin(np.pi * w[:, 0]) ** 2
+             + (w[:, -1] - 1) ** 2 * (1 + np.sin(2 * np.pi * w[:, -1]) ** 2))
+
+    part2 = np.sum((w[:, :-1] - 1) ** 2 * (1 + 10 * np.sin(np.pi * w[:, :-1] + 1) ** 2),
+                   axis=1)
+
+    vals = part1 + part2
+    return vals[0] if single else vals
 
 
-def _constraints(vector):
-    return math.log(vector[0]**2 + vector[2]**2) - (vector[1] + vector[3])**3 - 4
+def _constraints(vectors):
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] < 4:
+        raise ValueError(f"Constraint expects at least 4 dims, got {X.shape[1]}")
+
+    arg = X[:, 0]**2 + X[:, 2]**2
+    # Optional: guard log domain (arg must be > 0 to avoid -inf/nan)
+    if np.any(arg <= 0):
+        raise ValueError("log argument x0^2 + x2^2 must be > 0")
+
+    vals = np.log(arg) - (X[:, 1] + X[:, 3])**3 - 4
+    return vals[0] if single else vals
 
 
 def _snap_function(vector, exclude_vectors=None, dimension=None):
@@ -73,12 +94,13 @@ def run():
     lower_bound = np.array([-10.0] * ndim)
     upper_bound = np.array([10.0] * ndim)
 
-    seeds = [26286940, 115871350, 175057703, 219111207, 298310826, 490652243, 559324419, 704734848, 960760465, 976172230]
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     # Machine Learning treatment
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -142,6 +164,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

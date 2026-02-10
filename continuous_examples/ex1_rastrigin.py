@@ -15,10 +15,8 @@ values = [[-4.872378693083864, -4.3280438143327675, -4.227027245920693, -4.20133
 ndim = 5
 global_optima = 5.792602630145936
 
-BO_steps = 1
 
-
-def _evaluator(vector):
+def _evaluator(vectors):
     """
     A n-dimensional Rastrigin's function is defined as:
     f(x) = 10*n + sum_{i=1}^n { x_i^2 - 10*cos(2*PI*x_i) }
@@ -26,12 +24,26 @@ def _evaluator(vector):
 
     The global minima of the function being f(x) = 0 at all x_i = 0
     """
-    vector = np.array(vector)
-    return 10 * vector.size + sum(vector*vector - 10 * np.cos(2 * np.pi * vector))
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)   # (m, n) even if user passed (n,) [vector]
+    
+    n = X.shape[1]
+    vals = 10 * n + np.sum(X*X - 10*np.cos(2*np.pi*X), axis=1)
+
+    return vals[0] if single else vals
 
 
-def _constraints(vector):
-    return 2 - 5*(math.exp(sum([vector[ii] for ii in range(5)])))
+def _constraints(vectors):
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] < 5:
+        raise ValueError(f"Need at least 5 dimensions, got {X.shape[1]}")
+
+    vals = 2 - 5*np.exp(np.sum(X[:, :5], axis=1))
+    return vals[0] if single else vals
 
 
 def _snap_function(vector, exclude_vectors=None, dimension=None):
@@ -72,12 +84,13 @@ def run():
     lower_bound = np.array([-5.12] * ndim)
     upper_bound = np.array([5.12] * ndim)
 
-    seeds = [3913932, 39589892, 71914669, 411649843, 726339140, 792805422, 852405502, 869088651, 974788406, 986223669]
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     # Machine Learning treatment
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -141,6 +154,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

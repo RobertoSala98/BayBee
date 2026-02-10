@@ -62,6 +62,7 @@ def run():
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -80,10 +81,13 @@ def run():
         args.async_op = False
 
     # run the bee optimization algorithm using the extracted information
+    """
     if len(config["seeds"]) != args.runs:
         seeds = [np.random.randint(1,1e9) for _ in range(args.runs)]
     else:
         seeds = config["seeds"]
+    """
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     simulate.bee_algorithm(title=args.title,
                            num_runs=args.runs,
@@ -103,7 +107,7 @@ def run():
                            max_hist=max_hist,
                            dataset_obj=dataset_obj,
                            visualize_behaviour=args.visualize_behaviour,
-                           BO_steps=config["BO_steps"],
+                           BO_steps=BO_steps,
                            async_op=args.async_op,
                            std_ABC=args.standard_ABC,
                            seeds=seeds,
@@ -134,7 +138,7 @@ def parse_args():
     parser.add_argument('-mt', '--max_trials', type=int, metavar='', default=3,
                         help='How many times do you want to try to improve the solution before abandoning it')
     parser.add_argument('-levy', '--levy_step_size', type=int, metavar='', default=0.1,
-                        help='What should be the Levy step size yuo want to consider')
+                        help='What should be the Levy step size you want to consider')
     parser.add_argument('-c', '--constraint', action="store_true",
                         help='Do you want to add and consider any constraints?')
     parser.add_argument('-mlc', '--ML_approach_constr', type=str, metavar='', default=None,
@@ -145,6 +149,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

@@ -17,9 +17,8 @@ values = [[-412.45588524172706, -336.3323515201625, -334.9074401818383, -257.591
 ndim = 7
 global_optima = 1055.8186278882022
 
-BO_steps = 1
 
-def _evaluator(vector):
+def _evaluator(vectors):
     """
     An n-dimensional Schwefel function is defined as:
     f(x) = 418.9828*n - sum_{i=1}^n { x_i * sin(sqrt{abs(x_i)})}
@@ -27,12 +26,29 @@ def _evaluator(vector):
 
     The global minima of the function being f(x) = 0 at all x_i = 420.9687
     """
-    vector = np.array(vector)
-    return 418.9829 * vector.size - np.sum(vector * np.sin(np.sqrt(np.abs(vector))))
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    n = X.shape[1]
+    vals = 418.9829 * n - np.sum(X * np.sin(np.sqrt(np.abs(X))), axis=1)
+    return vals[0] if single else vals
 
 
-def _constraints(vector):
-    return min(max(400**2 - (vector[0] - 350)**2 - (vector[3] + 150)**2 - (vector[6] - 200)**2, 300**2 - (vector[1] + 100)**2 - (vector[4] - 50)**2 - (vector[5] + 35)**2), -0.001 * vector[2]**2 + 90)
+def _constraints(vectors):
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] < 7:
+        raise ValueError(f"Constraint expects at least 7 dims, got {X.shape[1]}")
+
+    expr1 = 400**2 - (X[:, 0] - 350)**2 - (X[:, 3] + 150)**2 - (X[:, 6] - 200)**2
+    expr2 = 300**2 - (X[:, 1] + 100)**2 - (X[:, 4] - 50)**2 - (X[:, 5] + 35)**2
+    expr3 = -0.001 * X[:, 2]**2 + 90
+
+    vals = np.minimum(np.maximum(expr1, expr2), expr3)
+    return vals[0] if single else vals
 
 
 def _snap_function(vector, exclude_vectors=None, dimension=None):
@@ -73,12 +89,13 @@ def run():
     lower_bound = np.array([-500.0] * ndim)
     upper_bound = np.array([500.0] * ndim)
 
-    seeds = [6407828, 172987209, 233245973, 320113239, 389007125, 428597143, 489746793, 680837101, 694305552, 914275672]
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     # Machine Learning treatment
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -142,6 +159,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

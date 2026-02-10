@@ -16,9 +16,8 @@ values = [[0.05053739836308857, 0.10333867740437064, 0.10728094041940994, 0.1820
 ndim = 6
 global_optima = -2.94765433808579
 
-BO_steps = 1
 
-def _evaluator(vector):
+def _evaluator(vectors):
     """
     An n-dimensional Hartmann function is defined as:
     f(x) = -sum_{i=1}^4 {alpha_i * exp( -sum_{j=1}^6 {A_{ij} * (x_j - P_{ij})^2} )}
@@ -26,32 +25,48 @@ def _evaluator(vector):
 
     The global minima of the function being f(x) = -3.32237 at (0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573)
     """
-    vector = np.array(vector)
-    alpha = np.array([1.0, 1.2, 3.0, 3.2])
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] != 6:
+        raise ValueError(f"Hartmann6 expects 6D inputs, got {X.shape[1]}")
+
+    alpha = np.array([1.0, 1.2, 3.0, 3.2]) 
     A = np.array([
         [10, 3, 17, 3.5, 1.7, 8],
         [0.05, 10, 17, 0.1, 8, 14],
         [3, 3.5, 1.7, 10, 17, 8],
         [17, 8, 0.05, 10, 0.1, 14]
-    ])
+    ], dtype=float)
     P = 1.0e-4 * np.array([
         [1312, 1696, 5569, 124, 8283, 5886],
         [2329, 4135, 8307, 3736, 1004, 9991],
         [2348, 1451, 3522, 2883, 3047, 6650],
         [4047, 8828, 8732, 5743, 1091, 381]
-    ])
-    external_sum = 0
-    for i in range(4):
-        inner_sum = 0
-        for j in range(6):
-            inner_sum -= A[i, j] * (vector[j] - P[i, j]) ** 2
-        external_sum += alpha[i] * np.exp(inner_sum)
-    results = -(external_sum + 2.58) / 1.94
-    return results
+    ], dtype=float)
+
+    d = X[:, None, :] - P[None, :, :]
+    inner = -np.sum(A[None, :, :] * d * d, axis=2)
+    external = np.sum(alpha[None, :] * np.exp(inner), axis=1)
+
+    results = -(external + 2.58) / 1.94
+    return results[0] if single else results
 
 
-def _constraints(vector):
-    return (4*math.pow(vector[0]**2 + vector[3]**3, 1/8))/(vector[1]*vector[2] - math.sinh(vector[4])) - 1
+def _constraints(vectors):
+    X = np.asarray(vectors, dtype=float)
+    single = (X.ndim == 1)
+    X = np.atleast_2d(X)
+
+    if X.shape[1] < 5:
+        raise ValueError(f"Constraint expects at least 5 dims, got {X.shape[1]}")
+
+    num = 4 * np.power(X[:, 0]**2 + X[:, 3]**3, 1/8)
+    den = (X[:, 1] * X[:, 2]) - np.sinh(X[:, 4])
+    vals = num / den - 1
+
+    return vals[0] if single else vals
 
 
 def _snap_function(vector, exclude_vectors=None, dimension=None):
@@ -92,12 +107,13 @@ def run():
     lower_bound = np.array([0.0] * ndim)
     upper_bound = np.array([1.0] * ndim)
 
-    seeds = [35135571, 178329695, 226888644, 285367073, 355366552, 392533894, 471580760, 558256294, 912566166, 977806017]
+    seeds = [361288763, 977158673, 248565991, 763729313, 736261687, 701927699, 818372591, 946799374, 433368984, 710895776, 220959875, 178717414, 499290437, 710177041, 789831346, 466765865, 664620228, 739167888, 825604850, 477438306, 531556250, 110346033, 334792365, 371288882, 172855517, 628572063, 440863561, 926975100, 288654213, 410630257]
 
     # Machine Learning treatment
     ML_approach_constr = args.ML_approach_constr
     ML_approach_target = args.ML_approach_target
     BO_approach = args.Bayesian_Optimization_approach
+    BO_steps = args.Bayesian_Optimization_steps
     min_hist = args.min_hist
     max_hist = args.max_hist
 
@@ -161,6 +177,8 @@ def parse_args():
                         help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
+    parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,
+                        help='How many steps do you want for BO?')
     parser.add_argument('-min_hist', '--min_hist', type=int, metavar='', default=10,
                         help='How many minimum samples do you want to use to train the ML models?')
     parser.add_argument('-max_hist', '--max_hist', type=int, metavar='', default=1000,

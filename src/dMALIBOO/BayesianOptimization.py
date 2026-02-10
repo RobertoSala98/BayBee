@@ -469,19 +469,7 @@ class BO:
                     self.initial_points = n_user
                 n_target = int(min(self.initial_points, N))
 
-                idx_full = self.rng.choice(N, size=n_target, replace=False)
-
-                if not np.array_equal(idx_full[:n_user], idx_user):
-                    """
-                    raise ValueError(
-                        "To get extra points exactly identical to initialize(None), "
-                        "X0 (indices) must be the prefix of the indices that initialize(None) would pick "
-                        "with the same random_state and initial_points."
-                    )
-                    """
-                    idx0 = idx_user
-                else:
-                    idx0 = idx_full
+                idx0 = idx_user
             else:
                 n0 = min(int(self.initial_points), N)
                 idx0 = self.rng.choice(N, size=n0, replace=False)
@@ -513,25 +501,13 @@ class BO:
                 self.initial_points = n_user
             n_target = int(self.initial_points)
 
-            X_full = _generate_full_initial_design(n_target)
-
             X0_snapped = _maybe_snap(X0)
             if (y0 is not None or G0 is not None) and (not np.all(X0_snapped == X0)):
                 raise ValueError(
                     "X0 is not on the discrete grid but y0/G0 were provided. "
                     "Provide X0 already snapped, or pass y0=None and G0=None."
                 )
-            X0 = X0_snapped
-
-            if np.unique([_key_row(X0[i]) for i in range(n_user)]).size != n_user:
-                raise ValueError("Duplicate points in user-provided X0.")
-            
-            if not np.all(X_full[:n_user] == X0):
-                raise ValueError(
-                    "To get extra points exactly identical to initialize(None), "
-                    "X0 must be exactly the first X0.shape[0] points produced by initialize(None) "
-                    "(same random_state, init_strategy, discrete_values, and initial_points logic)."
-                )
+            X_full = X0_snapped
 
             X_extra = X_full[n_user:, :]
             self.X_train = X_full
@@ -569,6 +545,7 @@ class BO:
                         feasible=bool(mask_all[i]),
                         y_best_feasible=best_feas,
                     )
+
             return
 
         X_full = _generate_full_initial_design(int(self.initial_points))

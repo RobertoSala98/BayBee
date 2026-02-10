@@ -11,6 +11,5 @@
     "linspace": [-5.12, 5.12, 60],
     "n_dimension": 5,
     "evaluator": "lambda x: 10 * len(x) + sum(x**2 - 10 * np.cos(2 * np.pi * x))",
-    "global_optimum": 0,
-    "BO_steps": 2
+    "global_optimum": 0
 }
