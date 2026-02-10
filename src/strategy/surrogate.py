@@ -1,210 +1,199 @@
-from sklearn.pipeline import make_pipeline
-from sklearn.linear_model import Ridge
+import numpy as np
+
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import StandardScaler
 
 from warnings import simplefilter
 from sklearn.exceptions import ConvergenceWarning
 simplefilter("ignore", category=ConvergenceWarning)
 
-def _create_pipeline_ridge(poly_degree=2, ridge_alpha=0.5):
-    """
-    Helper function to create a standard Ridge regression pipeline.
-    """
-    return make_pipeline(
-        PolynomialFeatures(poly_degree),
-        Ridge(alpha=ridge_alpha)
-    )
+try:
+    from xgboost import XGBRegressor
+except Exception:
+    XGBRegressor = None
 
-def _create_pipeline_rf(poly_degree=2):
-    """
-    Helper function to create a Random Forest regression pipeline.
-    """
-    return make_pipeline(
-        PolynomialFeatures(poly_degree),
-        RandomForestRegressor()
-    )
 
-def _create_pipeline_nn(max_iter=200):
+def _create_bee_ml(model_name, poly_degree=2, random_state=None, **model_kwargs):
     """
-    Helper function to create a Neural Network regression pipeline.
+    Create a regression model with the same 'available models + standard params'
+    as your ML class: ridge, rf, xgb, nn; optional PolynomialFeatures.
     """
-    return make_pipeline(
-        StandardScaler(),
-        MLPRegressor(max_iter = max_iter)
-    )
+    name = str(model_name).lower()
 
-def _build_bee_model(bee, min_history_size, max_history_size, regressor_type, x, fg_x, pipeline_for, model_for):
-    """
-    Generic function to build an ML model for a single bee.
+    if random_state is not None and "random_state" not in model_kwargs:
+        model_kwargs["random_state"] = random_state
 
-    Parameters:
-        :param Bee bee                 : the Bee class instance
-        :param int min_history_size    : minimum history size to build the model
-        :param int max_history_size    : maximum history size to build the model
-        :param str regressor_type      : type of regressor to use for the model
-        :param str x                   : key to access data in bee.memory
-        :param str fg_x                : key to access target data in bee.memory
-        :param str pipeline_for        : attribute name where pipeline will be stored
-        :param str model_for           : attribute name where model will be stored
-    """
-    fgx_data = bee.memory[fg_x]
-    x_data = bee.memory[x]
+    if name == "ridge":
+        base = Ridge(**model_kwargs)
+    elif name == "rf":
+        base = RandomForestRegressor(**model_kwargs)
+    elif name == "xgb":
+        if XGBRegressor is None:
+            raise ImportError("xgboost is not installed, cannot use model_name='xgb'")
+        base = XGBRegressor(**model_kwargs)
+    elif name == "nn":
+        base = MLPRegressor(**model_kwargs)
+    else:
+        raise ValueError("model_name must be one of: ridge, rf, xgb, nn")
 
-    if not fgx_data or len(fgx_data) < min_history_size:
+    if poly_degree is not None and poly_degree > 1:
+        return Pipeline([
+            ("poly", PolynomialFeatures(degree=poly_degree, include_bias=True)),
+            ("est", base),
+        ])
+
+    return base
+
+
+def _build_bee_model(
+    bee,
+    min_history_size,
+    max_history_size,
+    model_name,
+    x_key,
+    y_key,
+    pipeline_for,
+    model_for,
+    poly_degree=2,
+    random_state=None,
+    model_kwargs=None,
+):
+    model_kwargs = model_kwargs or {}
+
+    y_data = bee.memory.get(y_key, [])
+    x_data = bee.memory.get(x_key, [])
+
+    # Need enough history and aligned X/y
+    n = min(len(y_data), len(x_data))
+    if n < min_history_size:
         setattr(bee, model_for, None)
         return
 
-    history_size = min(len(fgx_data), max_history_size)
-    relevant_data_fgx = fgx_data[-history_size:]
-    relevant_data_x = x_data[-history_size:]
+    history_size = min(n, max_history_size)
+    relevant_y = np.asarray(y_data[-history_size:]).ravel()
+    relevant_X = np.asarray(x_data[-history_size:])
 
-    if hasattr(bee, pipeline_for):
-        pipeline = getattr(bee, pipeline_for)
+    # Reuse the same estimator object if already created
+    if hasattr(bee, pipeline_for) and getattr(bee, pipeline_for) is not None:
+        est = getattr(bee, pipeline_for)
     else:
-        if regressor_type == "ridge":
-            pipeline = _create_pipeline_ridge()
-        elif regressor_type == "rf":
-            pipeline = _create_pipeline_rf()
-        elif regressor_type == "nn":
-            pipeline = _create_pipeline_nn()
-        else:
-            raise ValueError("No supported regressor type found")
-        setattr(bee, pipeline_for, pipeline)
+        est = _create_bee_ml(
+            model_name=model_name,
+            poly_degree=poly_degree,
+            random_state=random_state,
+            **model_kwargs,
+        )
+        setattr(bee, pipeline_for, est)
 
     try:
-        fit_model = pipeline.fit(relevant_data_x, relevant_data_fgx)
-        setattr(bee, model_for, fit_model)
-
+        est.fit(relevant_X, relevant_y)
+        setattr(bee, model_for, est)  # fitted estimator (same object)
     except Exception as e:
-        print(f"Warning: Error fitting model for bee (fg_x={fg_x}): {e}")
+        print(f"Warning: Error fitting model for bee (y_key={y_key}): {e}")
         setattr(bee, model_for, None)
 
 
-def build_ML_model_constraint(bee, min_ML_history_size, max_ML_history_size, regressor_type):
-    """
-    Build ML model to predict constraint satisfaction and guide search towards feasible regions.
-
-    Parameters:
-        :param Bee bee                 : the Bee class instance
-        :param int min_ML_history_size : minimum history size to build the model
-        :param int max_ML_history_size : maximum history size to build the model
-        :param str regressor_type      : type of regressor to use for the model
-    """
+def build_ML_model_constraint(bee, min_ML_history_size, max_ML_history_size, model_name,
+                             poly_degree=2, random_state=None, model_kwargs=None):
     _build_bee_model(
-        bee,
-        min_ML_history_size,
-        max_ML_history_size,
-        regressor_type,
-        "x",
-        "g(x)",
-        "constr_pipeline",
-        "constr_model"
+        bee=bee,
+        min_history_size=min_ML_history_size,
+        max_history_size=max_ML_history_size,
+        model_name=model_name,
+        x_key="x",
+        y_key="g(x)",
+        pipeline_for="constr_pipeline",
+        model_for="constr_model",
+        poly_degree=poly_degree,
+        random_state=random_state,
+        model_kwargs=model_kwargs,
     )
 
-def build_ML_model_target(bee, min_ML_history_size, max_ML_history_size, regressor_type):
-    """
-    Build ML model to predict objective function satisfaction and guide search towards feasible regions.
 
-    Parameters:
-        :param Bee bee                 : the Bee class instance
-        :param int min_ML_history_size : minimum history size to build the model
-        :param int max_ML_history_size : maximum history size to build the model
-        :param str regressor_type      : type of regressor to use for the model
-    """
+def build_ML_model_target(bee, min_ML_history_size, max_ML_history_size, model_name,
+                          poly_degree=2, random_state=None, model_kwargs=None):
     _build_bee_model(
-        bee,
-        min_ML_history_size,
-        max_ML_history_size,
-        regressor_type,
-        "x",
-        "f(x)",
-        "target_pipeline",
-        "target_model"
+        bee=bee,
+        min_history_size=min_ML_history_size,
+        max_history_size=max_ML_history_size,
+        model_name=model_name,
+        x_key="x",
+        y_key="f(x)",
+        pipeline_for="target_pipeline",
+        model_for="target_model",
+        poly_degree=poly_degree,
+        random_state=random_state,
+        model_kwargs=model_kwargs,
     )
 
-def _build_global_model(beehive, index, regressor_type, x, fg_x, model_for):
-    """
-    Generic function to build an ML model for a single bee.
 
-    Parameters:
-        :param Beehive beehive    : the Beehive class instance
-        :param int index          : index of the target bee to assign the model to
-        :param str regressor_type : type of regressor to use for the model
-        :param str x              : key to access data in bee.memory
-        :param str fg_x           : key to access target data in bee.memory
-        :param str model_for      : attribute name where model will be stored
-    """
+def _build_global_model(beehive, index, model_name, x_key, y_key, model_for,
+                        poly_degree=2, random_state=None, model_kwargs=None):
+    model_kwargs = model_kwargs or {}
 
     target_bee = beehive.population[index]
-    history_x = []
-    history_fgx = []
-    
-    for bee in beehive.population:
-        if x in bee.memory and fg_x in bee.memory:
-            history_x.extend(bee.memory[x])
-            history_fgx.extend(bee.memory[fg_x])
+    history_X, history_y = [], []
 
-    if not history_fgx or len(history_fgx) < beehive.min_ML_history_size:
+    for bee in beehive.population:
+        if x_key in bee.memory and y_key in bee.memory:
+            xs = bee.memory[x_key]
+            ys = bee.memory[y_key]
+            n = min(len(xs), len(ys))
+            if n > 0:
+                history_X.extend(xs[:n])
+                history_y.extend(ys[:n])
+
+    if len(history_y) < beehive.min_ML_history_size:
         setattr(target_bee, model_for, None)
         return
 
-    history_size = min(len(history_fgx), beehive.max_ML_history_size)
+    history_size = min(len(history_y), beehive.max_ML_history_size)
+    relevant_X = np.asarray(history_X[-history_size:])
+    relevant_y = np.asarray(history_y[-history_size:]).ravel()
 
-    relevant_fgx_data = history_fgx[-history_size:]
-    relevant_x_data = history_x[-history_size:]
-    if regressor_type == "ridge":
-        pipeline = _create_pipeline_ridge()
-    elif regressor_type == "rf":
-        pipeline = _create_pipeline_rf()
-    elif regressor_type == "nn":
-        pipeline = _create_pipeline_nn()
-    else:
-        raise ValueError("No supported regressor type found")
-    
-    try:
-        fit_model = pipeline.fit(relevant_x_data, relevant_fgx_data)
-        setattr(target_bee, model_for, fit_model)
-
-    except Exception as e:
-        print(f"Warning: Error fitting model for bee (fg_x={fg_x}): {e}")
-        setattr(target_bee, model_for, None)
-    
-
-def build_ML_model_constraint_global(beehive, index, regressor_type):
-    """
-    Builds a global ML model for constraint prediction using data from all bees.
-
-    Parameters:
-        :param Beehive beehive    : the Beehive class instance
-        :param int index          : index of the target bee to assign the model to
-        :param str regressor_type : type of regressor to use for the model
-    """
-    _build_global_model(
-        beehive,
-        index,
-        regressor_type,
-        "x",
-        "g(x)",
-        "constr_model"
+    est = _create_bee_ml(
+        model_name=model_name,
+        poly_degree=poly_degree,
+        random_state=random_state,
+        **model_kwargs,
     )
 
-def build_ML_model_target_global(beehive, index, regressor_type):
-    """
-    Builds a global ML model for target function prediction using data from all bees.
+    try:
+        est.fit(relevant_X, relevant_y)
+        setattr(target_bee, model_for, est)
+    except Exception as e:
+        print(f"Warning: Error fitting global model (y_key={y_key}): {e}")
+        setattr(target_bee, model_for, None)
 
-    Parameters:
-        :param Beehive beehive    : the Beehive class instance
-        :param int index          : index of the target bee to assign the model to
-        :param str regressor_type : type of regressor to use for the model
-    """
+
+def build_ML_model_constraint_global(beehive, index, model_name,
+                                    poly_degree=2, random_state=None, model_kwargs=None):
     _build_global_model(
-        beehive,
-        index,
-        regressor_type,
-        "x",
-        "f(x)",
-        "target_model"
+        beehive=beehive,
+        index=index,
+        model_name=model_name,
+        x_key="x",
+        y_key="g(x)",
+        model_for="constr_model",
+        poly_degree=poly_degree,
+        random_state=random_state,
+        model_kwargs=model_kwargs,
+    )
+
+
+def build_ML_model_target_global(beehive, index, model_name,
+                                poly_degree=2, random_state=None, model_kwargs=None):
+    _build_global_model(
+        beehive=beehive,
+        index=index,
+        model_name=model_name,
+        x_key="x",
+        y_key="f(x)",
+        model_for="target_model",
+        poly_degree=poly_degree,
+        random_state=random_state,
+        model_kwargs=model_kwargs,
     )

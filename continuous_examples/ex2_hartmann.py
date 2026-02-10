@@ -54,7 +54,7 @@ def _evaluator(vectors):
     return results[0] if single else results
 
 
-def _constraints(vectors):
+def _constraints(vectors, eps=1e-14):
     X = np.asarray(vectors, dtype=float)
     single = (X.ndim == 1)
     X = np.atleast_2d(X)
@@ -64,7 +64,13 @@ def _constraints(vectors):
 
     num = 4 * np.power(X[:, 0]**2 + X[:, 3]**3, 1/8)
     den = (X[:, 1] * X[:, 2]) - np.sinh(X[:, 4])
-    vals = num / den - 1
+
+    bad = np.abs(den) <= eps
+    vals = np.empty_like(den, dtype=float)
+
+    max_float = np.finfo(np.float64).max
+    vals[bad] = max_float
+    vals[~bad] = num[~bad] / den[~bad] - 1
 
     return vals[0] if single else vals
 
