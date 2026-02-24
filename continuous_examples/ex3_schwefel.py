@@ -114,7 +114,8 @@ def run():
                            constraints=constraints,
                            ML_approach_constr=ML_approach_constr,
                            ML_approach_target=ML_approach_target,
-                           regressor_type=args.regressor_type,
+                           constr_regressor_type=args.constr_regressor_type,
+                           target_regressor_type=args.target_regressor_type,
                            BO_approach=BO_approach,
                            min_hist=min_hist,
                            max_hist=max_hist,
@@ -155,8 +156,10 @@ def parse_args():
                         help='Do you want to use Machine Learning for the function constraints? If yes, select either local or global. If no, then None')
     parser.add_argument('-mlt', '--ML_approach_target', type=str, metavar='', default=None,
                         help='Do you want to use Machine Learning for the target functions? If yes, select either local or global. If no, then None')
-    parser.add_argument('-reg', '--regressor_type', type=str, metavar='', default="ridge",
-                        help='What regressor do you want to use for the ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
+    parser.add_argument('-regc', '--constr_regressor_type', type=str, metavar='', default="ridge",
+                        help='What regressor do you want to use for the constraint ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
+    parser.add_argument('-regt', '--target_regressor_type', type=str, metavar='', default="ridge",
+                        help='What regressor do you want to use for the target ML models? Default: ridge. Available: random forest (rr) and neural network (nn)')
     parser.add_argument('-BO', '--Bayesian_Optimization_approach', action='store_true',
                         help='Do you want to use Bayesian Optimization?')
     parser.add_argument('-BOsteps', '--Bayesian_Optimization_steps', type=int, metavar='', default=0,

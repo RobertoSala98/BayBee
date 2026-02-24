@@ -156,7 +156,8 @@ class Beehive(object):
                  levy_step_size=0.1,
                  ML_approach_constr=None,
                  ML_approach_target=None,
-                 regressor_type='ridge',
+                 constr_regressor_type='ridge',
+                 target_regressor_type='ridge',
                  BO_approach=False,
                  min_ML_history_size=10, max_ML_history_size=100,
                  dataset_obj=None,
@@ -265,7 +266,8 @@ class Beehive(object):
         self.ML_approach_target = ML_approach_target
         self.min_ML_history_size = min_ML_history_size
         self.max_ML_history_size = max_ML_history_size
-        self.regressor_type = regressor_type
+        self.constr_regressor_type = constr_regressor_type
+        self.target_regressor_type = target_regressor_type
 
         # initialize parameters for BO
         self.BO_approach = BO_approach
@@ -762,9 +764,9 @@ class Beehive(object):
 
         if self.ML_approach_target == 'local':
             bee_to_train = self.population[index]
-            surrogate.build_ML_model_target(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.regressor_type)
+            surrogate.build_ML_model_target(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.target_regressor_type)
         elif self.ML_approach_target == 'global':
-            surrogate.build_ML_model_target_global(self, index, self.regressor_type)
+            surrogate.build_ML_model_target_global(self, index, self.target_regressor_type)
 
         # selects another bee
         indices = [bee_idx for bee_idx in range(self.size) if
@@ -850,9 +852,9 @@ class Beehive(object):
         else:
             if self.ML_approach_target == 'local':
                 bee_to_train = self.population[index]
-                surrogate.build_ML_model_target(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.regressor_type)
+                surrogate.build_ML_model_target(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.target_regressor_type)
             elif self.ML_approach_target == 'global':
-                surrogate.build_ML_model_target_global(self, index, self.regressor_type)
+                surrogate.build_ML_model_target_global(self, index, self.target_regressor_type)
 
             # selects another bee
             indices = [bee_idx for bee_idx in range(self.size) if bee_idx != index and self.population[bee_idx].constraint >= 0]
@@ -910,10 +912,10 @@ class Beehive(object):
         constr_scout_model = None
         if self.ML_approach_constr == 'local':
             bee_to_train = self.population[index]
-            surrogate.build_ML_model_constraint(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.regressor_type)
+            surrogate.build_ML_model_constraint(bee_to_train, self.min_ML_history_size, self.max_ML_history_size, self.constr_regressor_type)
             constr_scout_model = bee_to_train.constr_model
         elif self.ML_approach_constr == 'global':
-            surrogate.build_ML_model_constraint_global(self, index, self.regressor_type)
+            surrogate.build_ML_model_constraint_global(self, index, self.constr_regressor_type)
             constr_scout_model = self.population[index].constr_model
         
         # creates a new scout bee randomly

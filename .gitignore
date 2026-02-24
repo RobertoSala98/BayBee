@@ -3,3 +3,10 @@ output/
 resources/
 __pycache__
 *.sh
+compare_different_approaches.py
+comparison_approaches/
+*.pdf
+export_mean_OF_value_abeec.py
+plot_average_OF_value.py
+*.png
+utils/

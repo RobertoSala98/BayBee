@@ -13,7 +13,7 @@ plt.ioff() # Turn off interactive mode for plotting to avoid displaying figures
 
 
 def bee_algorithm(title, num_runs, num_bees, max_itrs, max_trials, global_optima, lower, upper, evaluator, constraints,
-                  ML_approach_constr, ML_approach_target, regressor_type, BO_approach, min_hist, max_hist, levy_step_size, dataset_obj=None, snap_function=None,
+                  ML_approach_constr, ML_approach_target, constr_regressor_type, target_regressor_type, BO_approach, min_hist, max_hist, levy_step_size, dataset_obj=None, snap_function=None,
                   visualize_behaviour=False, BO_steps=1, async_op=False, std_ABC=False, seeds=[], memory_type='local', cache=False, resume=False):
     """
     Sets up and runs the Artificial Bee Colony (ABC) optimization algorithm for a specified number of runs.
@@ -106,7 +106,8 @@ def bee_algorithm(title, num_runs, num_bees, max_itrs, max_trials, global_optima
                 global_optima=global_optima,
                 ML_approach_constr=ML_approach_constr,
                 ML_approach_target=ML_approach_target,
-                regressor_type = regressor_type,
+                constr_regressor_type=constr_regressor_type,
+                target_regressor_type=target_regressor_type,
                 BO_approach=BO_approach,
                 min_ML_history_size=min_hist,
                 max_ML_history_size=max_hist,

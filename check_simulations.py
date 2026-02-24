@@ -1,6 +1,6 @@
 import os
 
-output_folder = 'output/ex1_rastrigin'
+output_folder = 'output/ex2_hartmann'
 
 folder_list = ['num_bees', 'ML_approaches', 'memory', 'max_trials', 'levy_proba', 'BO_steps']
 
