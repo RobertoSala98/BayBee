@@ -2,6 +2,7 @@ import os
 import copy
 import numpy as np
 from src.bo_manager import BOmanager as BO
+from src.strategy import memory
 
 
 def apply_BO(beehive, index, role):
@@ -17,6 +18,11 @@ def apply_BO(beehive, index, role):
     _init_points = np.asarray(beehive.population[index].memory['x'])
     log_dir = os.path.dirname(beehive.path_to_log) if beehive.path_to_log else "."
 
+    if beehive.memory_type == 'global':
+        _memory = memory.retrieve_recent_memory(beehive, index)
+    else:
+        _memory = None
+
     if beehive.dataset_obj is None:
         BO_model = BO(  f=beehive.evaluate,
                         g=beehive.constraints,
@@ -27,7 +33,8 @@ def apply_BO(beehive, index, role):
                         output_path=log_dir,
                         init_points=_init_points,
                         n_iter=beehive.BO_steps,
-                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}')
+                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}',
+                        memory=_memory)
 
     else:
         def dummy_function(_X):
@@ -43,7 +50,8 @@ def apply_BO(beehive, index, role):
                         output_path=log_dir,
                         init_points=_init_points,
                         n_iter=beehive.BO_steps,
-                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}')
+                        log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}',
+                        memory=_memory)
 
     for idx_pt in range(len(BO_model.points)):
 

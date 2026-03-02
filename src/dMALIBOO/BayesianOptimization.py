@@ -666,10 +666,15 @@ class BO:
 
         return x_next, y_next, y_best
 
-    def run(self, n_iterations=20, n_restarts=10, verbose=True):
+    def run(self, n_iterations=20, n_restarts=10, verbose=True, memory=None):
 
-        for i in range(n_iterations):
+        i = 0
+        while i < n_iterations:
             x_next, y_next, _ = self.step(n_restarts=n_restarts, iter_idx=i+1)
+
+            if memory is not None:
+                if np.array_equal(x_next.ravel(), memory["actual"]) or any(np.array_equal(x_next.ravel(), arr) for arr in memory["memory"]):
+                    i -= 1  # The value is already in memory, so we don't count this iteration
 
             if verbose:
                 best_feas, _ = self.best_feasible_value()
@@ -679,6 +684,8 @@ class BO:
                     f"y_next = {y_next:.4f} | "
                     f"best_feasible = {best_feas if best_feas is not None else np.nan}"
                 )
+
+            i += 1      
 
         best_feas, mask = self.best_feasible_value()
         if best_feas is not None:

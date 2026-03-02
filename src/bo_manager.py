@@ -16,7 +16,7 @@ class BOmanager(object):
     Manager class for running Bayesian Optimization using the D-MALIBOO approach.
     """
 
-    def __init__(self, f, dataset, constraints_bounds, seed, output_path, g=dummy_function, bounds={}, discrete_values=[], x_columns=[], target_column="", constraint_column="", init_points=None, n_iter=1, log_name='results'):
+    def __init__(self, f, dataset, constraints_bounds, seed, output_path, g=dummy_function, bounds={}, discrete_values=[], x_columns=[], target_column="", constraint_column="", init_points=None, n_iter=1, log_name='results', memory=None):
         """
         Initialize the Bayesian Optimization manager.
 
@@ -71,16 +71,27 @@ class BOmanager(object):
             bo = BO(objective_function = f, domain_bounds = bounds, gp = gp, af = af, constraint_functions = [g], initial_points = 5, random_state = seed, logger = logger)
         
         bo.initialize(X0=init_points)
-        bo.run(n_iterations=n_iter, verbose=False)
+        bo.run(n_iterations=n_iter, verbose=False, memory=memory)
         bo.logger.to_csv(os.path.join(output_path, log_name + ".csv"), "mape", "accuracy")
 
+        idx_to_return = len(init_points)
+        to_return = []
+        for point in bo.X_train[len(init_points):]:
+            if not(np.array_equal(point.ravel(), memory["actual"]) or any(np.array_equal(point.ravel(), arr) for arr in memory["memory"])):
+                to_return.append(idx_to_return)
+
+            idx_to_return += 1
+
+        if len(to_return) != n_iter:
+            raise ValueError("The number of points to return must be equal to n_iter.")
+
         self.all_points = bo.X_train
-        self.points = bo.X_train[-len(init_points):]
-        self.target = bo.y_train[-len(init_points):]
+        self.points = bo.X_train[to_return]
+        self.target = bo.y_train[to_return]
         if dataset is not None:
-            self.constr = constraints_bounds[0][1] - bo.G_train[-len(init_points):]
+            self.constr = constraints_bounds[0][1] - bo.G_train[to_return]
         else:
-            self.constr = bo.G_train[-len(init_points):]
+            self.constr = bo.G_train[to_return]
         self.feasibility = self.constr > 0
 
         best_idx = bo.best_idx

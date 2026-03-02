@@ -21,8 +21,8 @@ def register_value(bee, x, obj_fun, constr_value, role, act_iter):
 
 def retrieve_recent_memory(bee, index):
     """
-    Retrieves the recent memory of a bee, up to the last 'Initialization' or 'Scout' role.
-    This memory is used to exclude recently visited points during exploration.
+    Retrieves the recent memory of a bee.
+    This memory is used to exclude already visited points during exploration.
 
     Parameters:
         :param Bee bee    : the Bee class instance

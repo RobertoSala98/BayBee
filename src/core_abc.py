@@ -517,7 +517,7 @@ class Beehive(object):
                      cost["feasible"][-1] > 0 else np.inf)
                 cost["abs_regret"].append(absolute_regret)
 
-                checkpoint_rate = 5
+                checkpoint_rate = 1000
                 if checkpoint_dir and (itr + 1) % checkpoint_rate == 0:
                     checkpoint_path = os.path.join("output", checkpoint_dir, "checkpoint.pkl")
                     memory.save_checkpoint(self, checkpoint_path)
@@ -628,8 +628,8 @@ class Beehive(object):
                     self.iter += 1
                     pbar.update(1)
 
-                    checkpoint_rate = 5
-                    if checkpoint_dir and (self.iter % (self.size * 2) * checkpoint_rate == 0):
+                    checkpoint_rate = 1000
+                    if checkpoint_dir and ((self.iter / (self.size * 2)) % checkpoint_rate == 0):
                         self.max_itrs = max_itrs
                         checkpoint_path = os.path.join("output", checkpoint_dir, f"checkpoint.pkl")
                         memory.save_checkpoint(self, checkpoint_path)
