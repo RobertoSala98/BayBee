@@ -175,7 +175,7 @@ def log_observed_points(beehive):
     # percentage_unique_points = [round((1 - repetitions[idx] / evaluated[idx])*100, 2) for idx in range(len(evaluated))]
 
     print("\n")
-    print(f"Number of evalutaion of the OF: {counter}")
+    print(f"Number of evaluations of the OF: {counter}")
     print(f"Number of non-repeated points: {len(all_points)}")
     print(f"{round((1 - len(all_points) / counter) * 100, 2)}% of the evaluated points are repeated")
     # print(f"Percentage of non-repeated points across iterations: {percentage_unique_points}")
@@ -206,7 +206,7 @@ def log_observed_points_async(beehive):
             counter += 1
 
     print("\n")
-    print(f"Number of evalutaion of the OF: {counter}")
+    print(f"Number of evaluations of the OF: {counter}")
     print(f"Number of non-repeated points: {len(all_points)}")
     print(f"{round((1 - len(all_points) / counter) * 100, 2)}% of the evaluated points are repeated")
 

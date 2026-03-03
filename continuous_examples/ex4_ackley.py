@@ -141,7 +141,8 @@ def run():
                            memory_type=args.memory,
                            cache=args.cache,
                            levy_step_size=args.levy_step_size,
-                           resume=args.resume
+                           resume=args.resume,
+                           discrete_values=values
                         )
 
 def parse_args():

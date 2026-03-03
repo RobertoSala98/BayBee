@@ -1,0 +1,15 @@
+{
+    "dataset": {
+        "path": "resources/GEMM.csv",
+        "x_column": ["GEMMK", "MWG", "NWG", "KWG", "MDIMC", "NDIMC", "MDIMA", "NDIMB", "KWI", "VWM", "VWN", "STRM", "STRN", "SA", "SB", "KREG", "PRECISION", "machine"],
+        "y_column": "cost",
+        "constraint_column": "time",
+        "constraint_value": 12,
+        "execution_time_column": "time"
+    },
+    "seeds": [],
+    "linspace": [-5.12, 5.12, 60],
+    "n_dimension": 5,
+    "evaluator": "",
+    "global_optimum": 0
+}

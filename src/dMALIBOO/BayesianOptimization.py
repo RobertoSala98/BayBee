@@ -343,7 +343,7 @@ class BO:
 
         return qmc.scale(U, lo, hi)
 
-    def initialize(self, X0=None, y0=None, G0=None):
+    def initialize(self, X0=None, y0=None, G0=None, memory=None):
         """
         Initialization with three modes:
 
@@ -425,60 +425,65 @@ class BO:
 
             return np.asarray(X_out, dtype=float)
 
+        def _to_dataset_indices(X_input, X_cand):
+            N = X_cand.shape[0]
+            arr = np.asarray(X_input)
+
+            if arr.ndim == 1:
+                return arr.astype(int).ravel()
+
+            if arr.ndim == 2:
+                X_user = np.asarray(arr, dtype=float)
+
+                if X_user.shape[1] != self.dim:
+                    raise ValueError(
+                        f"In dataset mode, input must be indices (1D) "
+                        f"or points with shape (n,{self.dim})."
+                    )
+
+                map_ds = {_key_row(X_cand[i]): i for i in range(N)}
+
+                idx_list = []
+                for i in range(X_user.shape[0]):
+                    k = _key_row(X_user[i])
+                    if k not in map_ds:
+                        raise ValueError(
+                            "Could not match rows exactly to dataset.X. "
+                            "Please pass indices (1D integer array) in dataset mode."
+                        )
+                    idx_list.append(map_ds[k])
+
+                return np.asarray(idx_list, dtype=int)
+
+            raise ValueError("Input must be indices (1D) or points (2D).")
+
+        self.memory = memory
+
         if self.dataset is not None:
             X_cand = self.dataset.X
             y_cand = self.dataset.y
             N = int(X_cand.shape[0])
 
-            self.compute_global_best_feasible_from_dataset()
-            #print("Global best feasible y over entire dataset:", self.global_best_feasible_y)
-            #print("Global best feasible x over entire dataset:", self.global_best_feasible_x)
+            idx_used = None
+
+            if memory is not None:
+                X_mem = np.vstack([memory['actual'].ravel(), np.vstack(memory['memory'])])
+                idx_used = _to_dataset_indices(X_mem, X_cand)
 
             if X0 is not None:
-                idx_user = np.asarray(X0)
-
-                if idx_user.ndim == 1:
-                    idx_user = idx_user.astype(int).ravel()
-                elif idx_user.ndim == 2:
-                    X_user = np.asarray(idx_user, dtype=float)
-                    if X_user.shape[1] != self.dim:
-                        raise ValueError(f"In dataset mode, X0 must be indices (1D) or points with shape (n,{self.dim}).")
-
-                    map_ds = {}
-                    for i in range(N):
-                        map_ds[_key_row(X_cand[i])] = i
-
-                    idx_list = []
-                    for i in range(X_user.shape[0]):
-                        k = _key_row(X_user[i])
-                        if k not in map_ds:
-                            raise ValueError(
-                                "Could not match X0 rows exactly to dataset.X. "
-                                "Please pass indices (1D integer array) in dataset mode."
-                            )
-                        idx_list.append(map_ds[k])
-                    idx_user = np.asarray(idx_list, dtype=int)
-                else:
-                    raise ValueError("In dataset mode, X0 must be indices (1D) or points (2D).")
-
-                #if np.unique(idx_user).size != idx_user.size:
-                #    raise ValueError("Duplicate indices in X0 (dataset mode).")
-
-                n_user = int(idx_user.size)
-                if self.initial_points < n_user:
-                    self.initial_points = n_user
-                n_target = int(min(self.initial_points, N))
-
-                idx0 = idx_user
+                idx0 = _to_dataset_indices(X0, X_cand)
             else:
                 n0 = min(int(self.initial_points), N)
                 idx0 = self.rng.choice(N, size=n0, replace=False)
 
-            self.used_idx[idx0] = True
+            if idx_used is None:
+                self.used_idx[idx0] = True
+            else:
+                self.used_idx[idx_used] = True
             self.train_idx = np.asarray(idx0, dtype=int)
             self.X_train = np.asarray(X_cand[idx0], dtype=float)
             self.y_train = np.asarray(y_cand[idx0], dtype=float).ravel()
-            self.G_train = np.asarray(self.dataset.G[idx_list], dtype=float)
+            self.G_train = np.asarray(self.dataset.G[idx0], dtype=float)
 
             if self.logger is not None:
                 mask_all = self.feasibility_mask_idx(idx0)
@@ -631,7 +636,7 @@ class BO:
                     x_next = self._snap_to_discrete(x_next_cont)
                     if self.discrete_refine:
                         x_next = self._refine_discrete_by_af(x_next, y_best=y_best)
-                    if self._is_duplicate(x_next, tol=0.0):
+                    while self._is_duplicate(x_next, tol=0.0):
                         x_next = self._random_mixed_point(x_base=x_next_cont)
                 else:
                     x_next = x_next_cont
@@ -666,15 +671,10 @@ class BO:
 
         return x_next, y_next, y_best
 
-    def run(self, n_iterations=20, n_restarts=10, verbose=True, memory=None):
+    def run(self, n_iterations=20, n_restarts=10, verbose=True):
 
-        i = 0
-        while i < n_iterations:
+        for i in range(n_iterations):
             x_next, y_next, _ = self.step(n_restarts=n_restarts, iter_idx=i+1)
-
-            if memory is not None:
-                if np.array_equal(x_next.ravel(), memory["actual"]) or any(np.array_equal(x_next.ravel(), arr) for arr in memory["memory"]):
-                    i -= 1  # The value is already in memory, so we don't count this iteration
 
             if verbose:
                 best_feas, _ = self.best_feasible_value()
@@ -684,8 +684,6 @@ class BO:
                     f"y_next = {y_next:.4f} | "
                     f"best_feasible = {best_feas if best_feas is not None else np.nan}"
                 )
-
-            i += 1      
 
         best_feas, mask = self.best_feasible_value()
         if best_feas is not None:
@@ -718,7 +716,10 @@ class BO:
             return False
         x = np.asarray(x).reshape(1, -1)
         if tol == 0.0:
-            return bool(np.any(np.all(self.X_train == x, axis=1)))
+            if self.dataset is not None or self.memory is None:
+                return bool(np.any(np.all(self.X_train == x, axis=1)))
+            else:
+                return bool(np.any(np.all(self.X_train == x, axis=1))) or bool(np.any(np.all(np.vstack([self.memory['actual'].ravel(), np.vstack(self.memory['memory'])]) == x, axis=1)))
         return bool(np.any(np.all(np.isclose(self.X_train, x, atol=tol, rtol=0.0), axis=1)))
 
     def _random_mixed_point(self, x_base=None):

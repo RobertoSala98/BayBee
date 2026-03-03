@@ -18,7 +18,7 @@ class Bee(object):
     """
     __slots__ = (
         "vector", "constraint", "value", "fitness", "bee_id", "counter", "role", "memory", "constr_model",
-        "target_model", "BO_memory", "BO_to_do", "exclude_exploration_dim", "skip_exploration", "target_pipeline", "constr_pipeline",
+        "target_model", "BO_to_do", "exclude_exploration_dim", "skip_exploration", "target_pipeline", "constr_pipeline",
         'std_ABC', 'counter_idx'
     )
 
@@ -89,7 +89,6 @@ class Bee(object):
         # initialize ML models and store BO data
         self.constr_model = None
         self.target_model = None
-        self.BO_memory = deque()
         self.BO_to_do = 0
 
         # dimensions to exclude from exploration
@@ -167,7 +166,8 @@ class Beehive(object):
                  seed=-1,
                  memory_type='local',
                  cache=False,
-                 resume_sim=False):
+                 resume_sim=False,
+                 discrete_values=[]):
         """
         Initializes the Beehive with a set of bees and algorithm parameters.
 
@@ -288,6 +288,8 @@ class Beehive(object):
             self.cache = BloomFilter(capacity, 1e-6)
             for bee in self.population:
                 self.cache.add(np.round(bee.vector, 8).tobytes())
+
+        self.discrete_values = discrete_values
 
     def _mutate(self, vector, current_bee, indices):
         """
@@ -445,7 +447,7 @@ class Beehive(object):
                     update_time_start = time()
 
                     if self.population[index].BO_to_do > 0:
-                        execution_time = bo.store_BO_data(self, index)
+                        execution_time = bo.apply_BO(self, index, 'Worker')
                     else:
                         exec_time = self.worker_step(index)
                     
@@ -471,7 +473,7 @@ class Beehive(object):
                     update_time_start = time()
 
                     if self.population[index].BO_to_do > 0:
-                        execution_time = bo.store_BO_data(self, index)
+                        execution_time = bo.apply_BO(self, index, 'Onlooker')
                     else:
                         exec_time = self.onlooker_step(self.compute_probability(), index)
 
@@ -592,7 +594,7 @@ class Beehive(object):
 
                 elif prev_role == "Worker":
                     if self.population[bee_id].BO_to_do > 0:
-                        execution_time = bo.store_BO_data(self, bee_id)
+                        execution_time = bo.apply_BO(self, bee_id, "Worker")
                         update_time = time() - update_time_start
                         if execution_time == 0.0:
                             store_data = False
@@ -756,7 +758,7 @@ class Beehive(object):
         """
         # apply BO starting from the actual position
         if self.BO_approach:
-            if np.random.uniform(0, 1) < 0.3 * (self.iter / self.max_itrs):
+            if np.random.uniform(0, 1) < 0.1 * (self.iter / self.max_itrs):
                 self.population[index].BO_to_do = self.BO_steps
                 execution_time = bo.apply_BO(self, index, role)
                 return execution_time
@@ -851,7 +853,6 @@ class Beehive(object):
         self.mutated_population[current_index] = copy.deepcopy(self.population[index])
         self.mutated_population[current_index].bee_id = self.population[current_index].bee_id
         self.mutated_population[current_index].memory = copy.copy(self.population[current_index].memory)
-        #self.mutated_population[current_index].BO_memory = copy.copy(self.population[current_index].BO_memory)
 
         self.mutated_population[current_index].role = role
         self.mutated_population[current_index].counter_idx = index

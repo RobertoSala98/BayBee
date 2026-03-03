@@ -70,30 +70,20 @@ class BOmanager(object):
 
             logger = Logger(dim=len(bounds))
 
-            bo = BO(objective_function = f, domain_bounds = bounds, gp = gp, af = af, constraint_functions = [g], initial_points = 5, random_state = seed, logger = logger)
+            bo = BO(objective_function = f, domain_bounds = bounds, gp = gp, af = af, constraint_functions = [g], initial_points = 5, random_state = seed, logger = logger,
+                    discrete_values = discrete_values, discrete_refine=True)
         
-        bo.initialize(X0=init_points)
-        bo.run(n_iterations=n_iter, verbose=False, memory=memory)
+        bo.initialize(X0=init_points, memory=memory)
+        bo.run(n_iterations=n_iter, verbose=False)
         bo.logger.to_csv(os.path.join(output_path, log_name + ".csv"), "mape", "accuracy")
 
-        idx_to_return = len(init_points)
-        to_return = []
-        for point in bo.X_train[len(init_points):]:
-            if not(np.array_equal(point.ravel(), memory["actual"]) or any(np.array_equal(point.ravel(), arr) for arr in memory["memory"])):
-                to_return.append(idx_to_return)
-
-            idx_to_return += 1
-
-        if len(to_return) != n_iter:
-            raise ValueError("The number of points to return must be equal to n_iter.")
-
         self.all_points = bo.X_train
-        self.points = bo.X_train[to_return]
-        self.target = bo.y_train[to_return]
+        self.points = bo.X_train[-1]
+        self.target = bo.y_train[-1]
         if dataset is not None:
-            self.constr = constraints_bounds[0][1] - bo.G_train[to_return]
+            self.constr = constraints_bounds[0][1] - bo.G_train[-1]
         else:
-            self.constr = bo.G_train[to_return]
+            self.constr = bo.G_train[-1]
         self.feasibility = self.constr > 0
 
         best_idx = bo.best_idx
