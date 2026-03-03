@@ -443,7 +443,12 @@ class Beehive(object):
                 for index in range(self.size):
                     
                     update_time_start = time()
-                    exec_time = self.worker_step(index)
+
+                    if self.population[index].BO_to_do > 0:
+                        execution_time = bo.store_BO_data(self, index)
+                    else:
+                        exec_time = self.worker_step(index)
+                    
                     update_time = time() - update_time_start
                     worker_exec_time.append(exec_time + update_time)
 
@@ -464,7 +469,12 @@ class Beehive(object):
                 for index in range(self.size):
 
                     update_time_start = time()
-                    exec_time = self.onlooker_step(self.compute_probability(), index)
+
+                    if self.population[index].BO_to_do > 0:
+                        execution_time = bo.store_BO_data(self, index)
+                    else:
+                        exec_time = self.onlooker_step(self.compute_probability(), index)
+
                     update_time = time() - update_time_start
                     onlooker_exec_time.append(exec_time + update_time)
 
@@ -485,9 +495,10 @@ class Beehive(object):
                 scout_exec_time = []
                 for index in list(range(self.size)):
 
-                    if self.population[index].counter > self.max_trials:
+                    if self.population[index].counter > self.max_trials and self.population[index].BO_to_do == 0:
                         
                         update_time_start = time()
+
                         exec_time = self.send_scout(index)
                         update_time = time() - update_time_start
                         scout_exec_time.append(exec_time + update_time)
@@ -581,9 +592,7 @@ class Beehive(object):
 
                 elif prev_role == "Worker":
                     if self.population[bee_id].BO_to_do > 0:
-                        execution_time = bo.apply_BO(self, bee_id, 'Worker')
-                        self.population[bee_id].BO_to_do -= 1
-
+                        execution_time = bo.store_BO_data(self, bee_id)
                         update_time = time() - update_time_start
                         if execution_time == 0.0:
                             store_data = False
