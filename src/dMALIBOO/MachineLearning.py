@@ -21,6 +21,7 @@ class ML:
         model_kwargs : dict
             Parameters passed to the underlying model
         """
+        
         self.model_name = model_name.lower()
         self.task = task.lower()
         self.poly_degree = poly_degree

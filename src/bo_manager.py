@@ -21,7 +21,7 @@ class BOmanager(object):
                  log_name='results', memory=None, constr_regressor_type='ridge', target_regressor_type='ridge'):
         """
         Initialize the Bayesian Optimization manager.
-
+        
         Parameters:
             :param function f               : function to optimize
             :param dict bounds             : dictionary of parameter bounds

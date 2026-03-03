@@ -8,7 +8,7 @@ from src.strategy import memory
 def apply_BO(beehive, index, role):
     """
     Applies Bayesian Optimization (BO) to refine the solution of a specific bee.
-
+    
     Parameters:
         :param Beehive beehive : the Beehive class instance
         :param int index       : index of the bee in the population
