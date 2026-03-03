@@ -34,7 +34,9 @@ def apply_BO(beehive, index, role):
                         init_points=_init_points,
                         n_iter=beehive.BO_steps,
                         log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}',
-                        memory=_memory)
+                        memory=_memory,
+                        constr_regressor_type=beehive.constr_regressor_type,
+                        target_regressor_type=beehive.target_regressor_type)
 
     else:
         def dummy_function(_X):
@@ -51,7 +53,9 @@ def apply_BO(beehive, index, role):
                         init_points=_init_points,
                         n_iter=beehive.BO_steps,
                         log_name=f'BO_Bee_{index}_iter_{beehive.iter}_{role}',
-                        memory=_memory)
+                        memory=_memory,
+                        constr_regressor_type=beehive.constr_regressor_type,
+                        target_regressor_type=beehive.target_regressor_type)
 
     for idx_pt in range(len(BO_model.points)):
 

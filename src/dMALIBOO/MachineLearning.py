@@ -28,6 +28,20 @@ class ML:
         self.model_kwargs = model_kwargs
         self.model = None
 
+        if model_name == "nn":
+            self.model_kwargs['hidden_layer_sizes'] = (100, 50)
+            self.model_kwargs['max_iter'] = 500
+
+        if model_name == "xgb":
+            self.model_kwargs['n_estimators'] = 100
+            self.model_kwargs['max_depth'] = 4
+            self.model_kwargs['learning_rate'] = 0.1
+            self.model_kwargs['eval_metric'] = "logloss"
+            self.model_kwargs['use_label_encoder'] = False
+
+        if model_name == "rf":
+            self.model_kwargs['n_estimators'] = 200
+
         self._constant_mode = False
         self._constant_class = None
 

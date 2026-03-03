@@ -16,7 +16,9 @@ class BOmanager(object):
     Manager class for running Bayesian Optimization using the D-MALIBOO approach.
     """
 
-    def __init__(self, f, dataset, constraints_bounds, seed, output_path, g=dummy_function, bounds={}, discrete_values=[], x_columns=[], target_column="", constraint_column="", init_points=None, n_iter=1, log_name='results', memory=None):
+    def __init__(self, f, dataset, constraints_bounds, seed, output_path, g=dummy_function, bounds={}, discrete_values=[], 
+                 x_columns=[], target_column="", constraint_column="", init_points=None, n_iter=1, 
+                 log_name='results', memory=None, constr_regressor_type='ridge', target_regressor_type='ridge'):
         """
         Initialize the Bayesian Optimization manager.
 
@@ -46,8 +48,8 @@ class BOmanager(object):
             gp = GP(kernel_name="Matern", random_state=seed, length_scale=1.0, nu=2.5)()
 
             af = AF(kind="ei", kappa=1.0,
-                    ml_on_bounds=True, ml_on_bounds_parameters={"name": "ridge", "task": "regression", "constraint_bounds": constraints_bounds},
-                    ml_on_target=True, ml_on_target_parameters={"name": "ridge", "task": "regression"},
+                    ml_on_bounds=True, ml_on_bounds_parameters={"name": constr_regressor_type, "task": "regression", "constraint_bounds": constraints_bounds},
+                    ml_on_target=True, ml_on_target_parameters={"name": target_regressor_type, "task": "classification"},
                     bounds=bounds,
                     random_state=seed,
                 )
