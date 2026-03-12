@@ -447,7 +447,7 @@ class Beehive(object):
                     update_time_start = time()
 
                     if self.population[index].BO_to_do > 0:
-                        execution_time = bo.apply_BO(self, index, 'Worker')
+                        exec_time = bo.apply_BO(self, index, 'Worker')
                     else:
                         exec_time = self.worker_step(index)
                     
@@ -473,7 +473,7 @@ class Beehive(object):
                     update_time_start = time()
 
                     if self.population[index].BO_to_do > 0:
-                        execution_time = bo.apply_BO(self, index, 'Onlooker')
+                        exec_time = bo.apply_BO(self, index, 'Onlooker')
                     else:
                         exec_time = self.onlooker_step(self.compute_probability(), index)
 
