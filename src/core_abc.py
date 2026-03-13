@@ -212,7 +212,7 @@ class Beehive(object):
         # assigns properties of algorithm
         self.dim = len(lower)
         self.max_itrs = max_itrs
-        self.max_itrs_async = max_itrs
+        self.max_itrs_async = 2 * max_itrs * self.size
 
         # define max trials
         if max_trials is not None:
@@ -284,7 +284,7 @@ class Beehive(object):
 
         self.use_cache = cache
         if self.use_cache:
-            capacity = 2 * self.max_itrs * self.size
+            capacity = self.max_itrs_async
             self.cache = BloomFilter(capacity, 1e-6)
             for bee in self.population:
                 self.cache.add(np.round(bee.vector, 8).tobytes())
@@ -569,7 +569,8 @@ class Beehive(object):
             self.iter = 0
 
         # Async algorithm
-        max_itrs = 2 * self.max_itrs_async * self.size
+        self.max_itrs = self.max_itrs_async
+        max_itrs = self.max_itrs_async
         print()
         pbar = tqdm(total=max_itrs, initial=self.iter)
 
@@ -641,7 +642,6 @@ class Beehive(object):
 
                     checkpoint_rate = 1000
                     if checkpoint_dir and ((self.iter / (self.size * 2)) % checkpoint_rate == 0):
-                        self.max_itrs = max_itrs
                         checkpoint_path = os.path.join("output", checkpoint_dir, f"checkpoint.pkl")
                         memory.save_checkpoint(self, checkpoint_path)
 
@@ -758,7 +758,7 @@ class Beehive(object):
         """
         # apply BO starting from the actual position
         if self.BO_approach:
-            if np.random.uniform(0, 1) < 0.1 * (self.iter / self.max_itrs):
+            if np.random.uniform(0, 1) < 0.3 * (self.iter / self.max_itrs):
                 self.population[index].BO_to_do = self.BO_steps
                 execution_time = bo.apply_BO(self, index, role)
                 return execution_time
