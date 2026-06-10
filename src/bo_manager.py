@@ -49,7 +49,7 @@ class BOmanager(object):
 
             af = AF(kind="ei", kappa=1.0,
                     ml_on_bounds=True, ml_on_bounds_parameters={"name": constr_regressor_type, "task": "regression", "constraint_bounds": constraints_bounds},
-                    ml_on_target=True, ml_on_target_parameters={"name": target_regressor_type, "task": "classification"},
+                    ml_on_target=True, ml_on_target_parameters={"name": target_regressor_type, "task": "regression"},
                     bounds=bounds,
                     random_state=seed,
                 )

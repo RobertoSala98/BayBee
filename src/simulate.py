@@ -65,6 +65,10 @@ def bee_algorithm(title, num_runs, num_bees, max_itrs, max_trials, global_optima
         # create directory for each run
         run_folder = f"abc_run{run_id + 1}"
         run_dir = os.path.join(title, run_folder)
+
+        if os.path.isfile(f"output/{run_dir}/summary.json"):
+            continue
+
         config.create_folder(run_dir)
 
         # define log filename

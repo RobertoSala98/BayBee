@@ -1,5 +1,5 @@
 *.DS_Store
-output/
+output*
 resources/
 __pycache__
 *.sh
@@ -11,3 +11,4 @@ plot_average_OF_value.py
 *.png
 utils/
 *.csv
+*.zip

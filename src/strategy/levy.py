@@ -45,7 +45,12 @@ def levy_flight(beehive, vector, index, beta=1.5, eps=1e-12):
         step = u / (abs(v) ** (1.0 / beta))
 
         best = beehive.solution
-        vector[d] = best[d] + step * beehive.levy_step_size * (vector[d] - best[d])
+
+        if best is None:
+            # randomly move by step * beehive.levy_step_size * random(lb, ub)
+            vector[d] = vector[d] + step * beehive.levy_step_size * np.random.uniform(-1, 1)
+        else:
+            vector[d] = best[d] + step * beehive.levy_step_size * (vector[d] - best[d])
 
         # snap vector based on recent memory
         if beehive.snap_function:

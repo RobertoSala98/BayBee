@@ -32,6 +32,10 @@ class ML:
         if model_name == "nn":
             self.model_kwargs['hidden_layer_sizes'] = (100, 50)
             self.model_kwargs['max_iter'] = 500
+            self.model_kwargs['hidden_layer_sizes'] = (64, 32)
+            self.model_kwargs['max_iter'] = 200
+            self.model_kwargs['early_stopping'] = True
+            self.model_kwargs['n_iter_no_change'] = 10
 
         if model_name == "xgb":
             self.model_kwargs['n_estimators'] = 100
@@ -39,9 +43,16 @@ class ML:
             self.model_kwargs['learning_rate'] = 0.1
             self.model_kwargs['eval_metric'] = "logloss"
             self.model_kwargs['use_label_encoder'] = False
+            self.model_kwargs['n_jobs'] = -1
+            self.model_kwargs['tree_method'] = 'hist'
+            self.model_kwargs['subsample'] = 0.8
+            self.model_kwargs['colsample_bytree'] = 0.8
 
         if model_name == "rf":
-            self.model_kwargs['n_estimators'] = 200
+            self.model_kwargs['n_estimators'] = 100
+            self.model_kwargs['max_depth'] = 10
+            self.model_kwargs['n_jobs'] = -1
+            self.model_kwargs['max_features'] = 'sqrt'
 
         self._constant_mode = False
         self._constant_class = None

@@ -585,6 +585,7 @@ class Beehive(object):
                 update_time_start = time()
                 if next_event[3]:
                     self.update_bee_status(bee_id, next_event[4])
+                    self.find_best()
 
                 if prev_role in ['Initialization', 'Scout']:
                     execution_time = self.worker_step(bee_id)

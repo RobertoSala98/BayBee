@@ -29,12 +29,28 @@ def _create_bee_ml(model_name, poly_degree=2, random_state=None, **model_kwargs)
     if name == "ridge":
         base = Ridge(**model_kwargs)
     elif name == "rf":
+        model_kwargs['n_estimators'] = 100
+        model_kwargs['max_depth'] = 10
+        model_kwargs['n_jobs'] = -1
+        model_kwargs['max_features'] = 'sqrt'
         base = RandomForestRegressor(**model_kwargs)
     elif name == "xgb":
         if XGBRegressor is None:
             raise ImportError("xgboost is not installed, cannot use model_name='xgb'")
+        model_kwargs['n_estimators'] = 100
+        model_kwargs['max_depth'] = 4
+        model_kwargs['learning_rate'] = 0.1
+        model_kwargs['eval_metric'] = "logloss"
+        model_kwargs['n_jobs'] = -1
+        model_kwargs['tree_method'] = 'hist'
+        model_kwargs['subsample'] = 0.8
+        model_kwargs['colsample_bytree'] = 0.8
         base = XGBRegressor(**model_kwargs)
     elif name == "nn":
+        model_kwargs['hidden_layer_sizes'] = (64, 32)
+        model_kwargs['max_iter'] = 200
+        model_kwargs['early_stopping'] = True
+        model_kwargs['n_iter_no_change'] = 10
         base = MLPRegressor(**model_kwargs)
     else:
         raise ValueError("model_name must be one of: ridge, rf, xgb, nn")

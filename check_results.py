@@ -1,7 +1,7 @@
 import os
 import json
 
-base_dir = "output/ligen_2.1_BO_1_mt10_async"
+base_dir = "output/ligen_2.0_ridge"
 
 mapr_values = []
 global_time_values = []
