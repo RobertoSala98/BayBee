@@ -11,4 +11,4 @@ plot_average_OF_value.py
 *.png
 *.csv
 *.zip
-scripts/
+utils/
